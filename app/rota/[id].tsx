@@ -270,9 +270,9 @@ export default function RotaPage() {
       </ScrollView>
 
       {/* Modal Concluir */}
-      <Modal visible={!!modalConcluir} transparent animationType="slide">
-        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} activeOpacity={1} onPress={() => setModalConcluir(null)}>
-          <View style={{ backgroundColor: "#ffffff", borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
+      <Modal visible={!!modalConcluir} transparent animationType="fade">
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", paddingHorizontal: 24 }} activeOpacity={1} onPress={() => setModalConcluir(null)}>
+          <View style={{ backgroundColor: "#ffffff", borderRadius: 24 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" }}>
               <Text style={{ fontWeight: "700", color: "#111827", fontSize: 16 }}>Confirmar Conclusão</Text>
               <TouchableOpacity onPress={() => setModalConcluir(null)} style={{ width: 32, height: 32, backgroundColor: "#f3f4f6", borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
@@ -297,7 +297,7 @@ export default function RotaPage() {
                 <Text style={{ fontSize: 11, color: "#9ca3af" }}>Ajuste se o horário real foi diferente</Text>
               </View>
             </View>
-            <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }}>
+            <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingBottom: 20 }}>
               <Btn variante="secundario" fullWidth onPress={() => setModalConcluir(null)}>Cancelar</Btn>
               <Btn fullWidth variante={modalConcluir?.enviarWhatsApp ? "whatsapp" : "primario"} onPress={confirmarConclusaoCidade} disabled={salvando}>
                 {modalConcluir?.enviarWhatsApp ? (
@@ -315,9 +315,9 @@ export default function RotaPage() {
       </Modal>
 
       {/* Modal Ocorrência */}
-      <Modal visible={!!modalOco} transparent animationType="slide">
-        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} activeOpacity={1} onPress={() => setModalOco(null)}>
-          <View style={{ backgroundColor: "#ffffff", borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "90%" }}>
+      <Modal visible={!!modalOco} transparent animationType="fade">
+        <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", paddingHorizontal: 24 }} activeOpacity={1} onPress={() => setModalOco(null)}>
+          <View style={{ backgroundColor: "#ffffff", borderRadius: 24, maxHeight: "85%" }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" }}>
               <Text style={{ fontWeight: "700", color: "#111827", fontSize: 16 }}>Nova Ocorrência</Text>
               <TouchableOpacity onPress={() => setModalOco(null)} style={{ width: 32, height: 32, backgroundColor: "#f3f4f6", borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
@@ -339,7 +339,7 @@ export default function RotaPage() {
               <Input label="Quantidade *" keyboardType="numeric" value={modalOco?.quantidade ?? "1"} onChangeText={(v) => modalOco && setModalOco({ ...modalOco, quantidade: v })} />
               <Input label="Observação (opcional)" value={modalOco?.descricao ?? ""} onChangeText={(v) => modalOco && setModalOco({ ...modalOco, descricao: v })} placeholder="Detalhes da ocorrência..." />
             </ScrollView>
-            <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingBottom: insets.bottom + 16, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#f3f4f6" }}>
+            <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 20, paddingBottom: 16, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#f3f4f6" }}>
               <Btn variante="secundario" fullWidth onPress={() => setModalOco(null)}>Cancelar</Btn>
               <Btn fullWidth onPress={adicionarOcorrencia}>Registrar</Btn>
             </View>

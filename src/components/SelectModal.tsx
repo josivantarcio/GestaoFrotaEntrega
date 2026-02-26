@@ -78,20 +78,20 @@ export default function SelectModal({
         <Text style={{ fontSize: 12, color: "#ef4444" }}>{erro}</Text>
       ) : null}
 
-      <Modal visible={open} transparent animationType="slide">
+      <Modal visible={open} transparent animationType="fade">
         <View
           style={{
             flex: 1,
             backgroundColor: "rgba(0,0,0,0.5)",
-            justifyContent: "flex-end",
+            justifyContent: "center",
+            paddingHorizontal: 24,
           }}
         >
           <View
             style={{
               backgroundColor: "#ffffff",
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              maxHeight: "70%",
+              borderRadius: 24,
+              maxHeight: "75%",
             }}
           >
             <View

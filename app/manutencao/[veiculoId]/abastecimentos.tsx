@@ -12,6 +12,8 @@ import {
   salvarAbastecimento,
   deletarAbastecimento,
   dataHojeISO,
+  isoParaBR,
+  parseDateBR,
   Veiculo,
   Abastecimento,
   TipoCombustivel,
@@ -21,7 +23,7 @@ import { mensagemAbastecimento, mensagemRelatorioAbastecimentos, abrirWhatsApp }
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const FORM_VAZIO = {
-  data: dataHojeISO(),
+  data: isoParaBR(dataHojeISO()),
   kmAtual: "",
   litros: "",
   valorTotal: "",
@@ -56,7 +58,7 @@ export default function AbastecimentosPage() {
   useEffect(() => { carregar(); }, [vidNum]);
 
   function abrirNovo() {
-    setForm({ ...FORM_VAZIO, data: dataHojeISO() });
+    setForm({ ...FORM_VAZIO, data: isoParaBR(dataHojeISO()) });
     setErros({});
     setUltimoCalculado(null);
     setMostraForm(true);
@@ -67,7 +69,8 @@ export default function AbastecimentosPage() {
     if (!form.kmAtual || isNaN(Number(form.kmAtual))) novosErros.kmAtual = "Informe o KM atual";
     if (!form.litros || isNaN(Number(form.litros))) novosErros.litros = "Informe os litros";
     if (!form.valorTotal || isNaN(Number(form.valorTotal))) novosErros.valorTotal = "Informe o valor";
-    if (!form.data) novosErros.data = "Informe a data";
+    const dataISO = parseDateBR(form.data);
+    if (!form.data || !dataISO) novosErros.data = "Data inválida. Use DD/MM/AAAA";
 
     if (lista.length > 0) {
       const maiorKm = lista[0].kmAtual;
@@ -83,7 +86,7 @@ export default function AbastecimentosPage() {
       const novoId = await salvarAbastecimento({
         veiculoId: vidNum,
         veiculoPlaca: veiculo?.placa ?? "",
-        data: form.data,
+        data: dataISO!,
         kmAtual: Number(form.kmAtual),
         litros: Number(form.litros),
         valorTotal: Number(form.valorTotal),
@@ -171,7 +174,7 @@ export default function AbastecimentosPage() {
         {mostraForm && (
           <View style={{ backgroundColor: "#ffffff", borderRadius: 16, padding: 16, gap: 12 }}>
             <Text style={{ fontWeight: "600", color: "#374151" }}>Novo Abastecimento</Text>
-            <Input label="Data *" value={form.data} onChangeText={(v) => setForm({ ...form, data: v })} placeholder="AAAA-MM-DD" erro={erros.data} />
+            <Input label="Data *" value={form.data} onChangeText={(v) => setForm({ ...form, data: v })} placeholder="DD/MM/AAAA" erro={erros.data} />
             <Input
               label={lista.length > 0 ? `KM atual * (último: ${lista[0].kmAtual})` : "KM atual *"}
               keyboardType="numeric"

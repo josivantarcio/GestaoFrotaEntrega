@@ -1,7 +1,7 @@
 import React from "react";
 import { View, ScrollView, TouchableOpacity, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { MapPin, Users, Truck, BookOpen, ChevronRight } from "lucide-react-native";
+import { MapPin, Users, Truck, BookOpen, ChevronRight, DatabaseBackup } from "lucide-react-native";
 import PageHeader from "@/components/PageHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -37,6 +37,25 @@ export default function CadastrosPage() {
             <ChevronRight size={18} color="#9ca3af" />
           </TouchableOpacity>
         ))}
+
+        {/* Separador */}
+        <View style={{ height: 1, backgroundColor: "#e5e7eb", marginVertical: 4 }} />
+
+        {/* Backup */}
+        <TouchableOpacity
+          onPress={() => router.push("/backup" as any)}
+          activeOpacity={0.7}
+          style={{ backgroundColor: "#eff6ff", borderWidth: 1, borderColor: "#bfdbfe", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16, flexDirection: "row", alignItems: "center", gap: 16 }}
+        >
+          <View style={{ backgroundColor: "#dbeafe", borderRadius: 20, padding: 12 }}>
+            <DatabaseBackup size={22} color="#2563eb" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: "600", color: "#1d4ed8", fontSize: 15 }}>Backup & Importação</Text>
+            <Text style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>Exportar ou restaurar dados do sistema</Text>
+          </View>
+          <ChevronRight size={18} color="#3b82f6" />
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );

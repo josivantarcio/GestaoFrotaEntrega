@@ -12,6 +12,8 @@ import {
   deletarManutencao,
   manutencaoVencida,
   dataHojeISO,
+  isoParaBR,
+  parseDateBR,
   Veiculo,
   Manutencao,
   ItemSubstituido,
@@ -23,7 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const TODOS_ITENS = Object.entries(ITENS_SUBSTITUIDOS_LABELS) as [ItemSubstituido, string][];
 
 const FORM_VAZIO = {
-  data: dataHojeISO(),
+  data: isoParaBR(dataHojeISO()),
   kmAtual: "",
   tipoOleo: "",
   itensSubstituidos: [] as ItemSubstituido[],
@@ -55,7 +57,7 @@ export default function ManutencoesPage() {
   useEffect(() => { carregar(); }, [vidNum]);
 
   function abrirNovo() {
-    setForm({ ...FORM_VAZIO, data: dataHojeISO() });
+    setForm({ ...FORM_VAZIO, data: isoParaBR(dataHojeISO()) });
     setErros({});
     setMostraForm(true);
   }
@@ -74,7 +76,10 @@ export default function ManutencoesPage() {
     if (!form.kmAtual || isNaN(Number(form.kmAtual))) novosErros.kmAtual = "Informe o KM atual";
     if (!form.tipoOleo.trim()) novosErros.tipoOleo = "Informe o tipo de óleo";
     if (form.itensSubstituidos.length === 0) novosErros.itens = "Selecione ao menos um item";
-    if (!form.data) novosErros.data = "Informe a data";
+    const dataISO = parseDateBR(form.data);
+    if (!form.data || !dataISO) novosErros.data = "Data inválida. Use DD/MM/AAAA";
+    const proximaTrocaDataISO = form.proximaTrocaData ? parseDateBR(form.proximaTrocaData) : null;
+    if (form.proximaTrocaData && !proximaTrocaDataISO) novosErros.proximaTrocaData = "Data inválida. Use DD/MM/AAAA";
 
     if (Object.keys(novosErros).length) { setErros(novosErros); return; }
 
@@ -83,12 +88,12 @@ export default function ManutencoesPage() {
       await salvarManutencao({
         veiculoId: vidNum,
         veiculoPlaca: veiculo?.placa ?? "",
-        data: form.data,
+        data: dataISO!,
         kmAtual: Number(form.kmAtual),
         tipoOleo: form.tipoOleo,
         itensSubstituidos: form.itensSubstituidos,
         proximaTrocaKm: form.proximaTrocaKm ? Number(form.proximaTrocaKm) : undefined,
-        proximaTrocaData: form.proximaTrocaData || undefined,
+        proximaTrocaData: proximaTrocaDataISO ?? undefined,
         observacao: form.observacao || undefined,
         criadoEm: new Date().toISOString(),
       });
@@ -146,7 +151,7 @@ export default function ManutencoesPage() {
         {mostraForm && (
           <View style={{ backgroundColor: "#ffffff", borderRadius: 16, padding: 16, gap: 12 }}>
             <Text style={{ fontWeight: "600", color: "#374151" }}>Nova Manutenção</Text>
-            <Input label="Data *" value={form.data} onChangeText={(v) => setForm({ ...form, data: v })} placeholder="AAAA-MM-DD" erro={erros.data} />
+            <Input label="Data *" value={form.data} onChangeText={(v) => setForm({ ...form, data: v })} placeholder="DD/MM/AAAA" erro={erros.data} />
             <Input
               label={lista.length > 0 ? `KM atual * (último: ${lista[0].kmAtual})` : "KM atual *"}
               keyboardType="numeric"
@@ -196,7 +201,7 @@ export default function ManutencoesPage() {
                 <Input label="Próx. troca (KM)" keyboardType="numeric" value={form.proximaTrocaKm} onChangeText={(v) => setForm({ ...form, proximaTrocaKm: v })} placeholder="Ex: 50000" />
               </View>
               <View style={{ flex: 1 }}>
-                <Input label="Próx. troca (data)" value={form.proximaTrocaData} onChangeText={(v) => setForm({ ...form, proximaTrocaData: v })} placeholder="AAAA-MM-DD" />
+                <Input label="Próx. troca (data)" value={form.proximaTrocaData} onChangeText={(v) => setForm({ ...form, proximaTrocaData: v })} placeholder="DD/MM/AAAA" erro={erros.proximaTrocaData} />
               </View>
             </View>
 

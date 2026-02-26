@@ -9,6 +9,8 @@ import {
   listarAbastecimentosPorPeriodo,
   listarManutencoesPorVeiculo,
   dataHojeISO,
+  isoParaBR,
+  parseDateBR,
   Veiculo,
   Abastecimento,
   Manutencao,
@@ -26,7 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type AbaAtiva = "abastecimentos" | "manutencoes";
 
-function primeiroDoMes(): string {
+function primeiroDoMesISO(): string {
   const hoje = new Date();
   return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`;
 }
@@ -35,8 +37,8 @@ export default function RelatoriosPage() {
   const insets = useSafeAreaInsets();
   const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
   const [veiculoId, setVeiculoId] = useState<string>("todos");
-  const [dataInicio, setDataInicio] = useState(primeiroDoMes());
-  const [dataFim, setDataFim] = useState(dataHojeISO());
+  const [dataInicio, setDataInicio] = useState(isoParaBR(primeiroDoMesISO()));
+  const [dataFim, setDataFim] = useState(isoParaBR(dataHojeISO()));
   const [aba, setAba] = useState<AbaAtiva>("abastecimentos");
   const [abastecimentos, setAbastecimentos] = useState<Abastecimento[]>([]);
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([]);
@@ -66,14 +68,16 @@ export default function RelatoriosPage() {
     setLoading(true);
     try {
       const vidNum = vid === "todos" ? undefined : Number(vid);
+      const diISO = parseDateBR(di) ?? di;
+      const dfISO = parseDateBR(df) ?? df;
       const [abs, mans] = await Promise.all([
-        listarAbastecimentosPorPeriodo(di, df, vidNum),
+        listarAbastecimentosPorPeriodo(diISO, dfISO, vidNum),
         vidNum !== undefined
           ? listarManutencoesPorVeiculo(vidNum).then((list) =>
-              list.filter((m) => m.data >= di && m.data <= df)
+              list.filter((m) => m.data >= diISO && m.data <= dfISO)
             )
           : Promise.all(vs.map((v) => listarManutencoesPorVeiculo(v.id!))).then(
-              (listas) => listas.flat().filter((m) => m.data >= di && m.data <= df)
+              (listas) => listas.flat().filter((m) => m.data >= diISO && m.data <= dfISO)
             ),
       ]);
       setAbastecimentos(abs);
@@ -94,7 +98,9 @@ export default function RelatoriosPage() {
   const veiculoSelecionado = veiculos.find((v) => String(v.id) === veiculoId) ?? null;
 
   function compartilharAbastecimentos() {
-    const msg = mensagemRelatorioAbastecimentos(veiculoSelecionado, dataInicio, dataFim, abastecimentos);
+    const diISO = parseDateBR(dataInicio) ?? dataInicio;
+    const dfISO = parseDateBR(dataFim) ?? dataFim;
+    const msg = mensagemRelatorioAbastecimentos(veiculoSelecionado, diISO, dfISO, abastecimentos);
     abrirWhatsApp(msg);
   }
 
@@ -121,11 +127,11 @@ export default function RelatoriosPage() {
           <View style={{ flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: "500", color: "#4b5563", marginBottom: 4 }}>De</Text>
-              <Input value={dataInicio} onChangeText={setDataInicio} placeholder="AAAA-MM-DD" />
+              <Input value={dataInicio} onChangeText={setDataInicio} placeholder="DD/MM/AAAA" />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 12, fontWeight: "500", color: "#4b5563", marginBottom: 4 }}>Até</Text>
-              <Input value={dataFim} onChangeText={setDataFim} placeholder="AAAA-MM-DD" />
+              <Input value={dataFim} onChangeText={setDataFim} placeholder="DD/MM/AAAA" />
             </View>
           </View>
         </View>

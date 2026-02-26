@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Clock, Truck, Package, CheckCircle2, AlertTriangle, ArrowRight, Filter, ChevronDown, ChevronUp, MapPin } from "lucide-react-native";
 import PageHeader from "@/components/PageHeader";
 import Input from "@/components/Input";
-import { listarRotas, Rota, formatarData, dataHojeISO } from "@/lib/db";
+import { listarRotas, Rota, formatarData, dataHojeISO, isoParaBR, parseDateBR } from "@/lib/db";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function calcularDuracao(horaSaida: string, horaChegada?: string): string {
@@ -21,7 +21,10 @@ function calcularDuracao(horaSaida: string, horaChegada?: string): string {
 function dataHaMesesISO(meses: number) {
   const d = new Date();
   d.setMonth(d.getMonth() - meses);
-  return d.toISOString().split("T")[0];
+  const ano = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
 }
 
 export default function HistoricoPage() {
@@ -30,8 +33,8 @@ export default function HistoricoPage() {
   const [rotas, setRotas] = useState<Rota[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroAberto, setFiltroAberto] = useState(false);
-  const [dataInicio, setDataInicio] = useState(dataHaMesesISO(1));
-  const [dataFim, setDataFim] = useState(dataHojeISO());
+  const [dataInicio, setDataInicio] = useState(isoParaBR(dataHaMesesISO(1)));
+  const [dataFim, setDataFim] = useState(isoParaBR(dataHojeISO()));
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "em_andamento" | "concluida">("todos");
 
   useEffect(() => {
@@ -39,8 +42,10 @@ export default function HistoricoPage() {
   }, []);
 
   const rotasFiltradas = useMemo(() => {
+    const inicioISO = parseDateBR(dataInicio) ?? dataInicio;
+    const fimISO = parseDateBR(dataFim) ?? dataFim;
     return rotas.filter((r) => {
-      const dentroPeriodo = r.data >= dataInicio && r.data <= dataFim;
+      const dentroPeriodo = r.data >= inicioISO && r.data <= fimISO;
       const statusOk = filtroStatus === "todos" || r.status === filtroStatus;
       return dentroPeriodo && statusOk;
     });
@@ -103,11 +108,11 @@ export default function HistoricoPage() {
             <View style={{ flexDirection: "row", gap: 12 }}>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 12, fontWeight: "500", color: "#4b5563", marginBottom: 4 }}>Data início</Text>
-                <Input value={dataInicio} onChangeText={setDataInicio} placeholder="AAAA-MM-DD" />
+                <Input value={dataInicio} onChangeText={setDataInicio} placeholder="DD/MM/AAAA" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 12, fontWeight: "500", color: "#4b5563", marginBottom: 4 }}>Data fim</Text>
-                <Input value={dataFim} onChangeText={setDataFim} placeholder="AAAA-MM-DD" />
+                <Input value={dataFim} onChangeText={setDataFim} placeholder="DD/MM/AAAA" />
               </View>
             </View>
 
@@ -135,8 +140,9 @@ export default function HistoricoPage() {
                   onPress={() => {
                     const d = new Date();
                     if (dias > 0) d.setDate(d.getDate() - dias); else d.setMonth(d.getMonth() - meses);
-                    setDataInicio(d.toISOString().split("T")[0]);
-                    setDataFim(dataHojeISO());
+                    const ano = d.getFullYear(), mes = String(d.getMonth() + 1).padStart(2, "0"), dia = String(d.getDate()).padStart(2, "0");
+                    setDataInicio(isoParaBR(`${ano}-${mes}-${dia}`));
+                    setDataFim(isoParaBR(dataHojeISO()));
                   }}
                   style={{ borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
                 >

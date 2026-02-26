@@ -38,7 +38,10 @@ function ultimosDias(n: number): string[] {
   for (let i = n - 1; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    dias.push(d.toISOString().split("T")[0]);
+    const ano = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, "0");
+    const dia = String(d.getDate()).padStart(2, "0");
+    dias.push(`${ano}-${mes}-${dia}`);
   }
   return dias;
 }
@@ -56,7 +59,7 @@ function gerarInsights(rotas: Rota[]): Insight[] {
   const hoje = new Date();
   const d30 = new Date(hoje);
   d30.setDate(d30.getDate() - 30);
-  const inicio30 = d30.toISOString().split("T")[0];
+  const inicio30 = `${d30.getFullYear()}-${String(d30.getMonth() + 1).padStart(2, "0")}-${String(d30.getDate()).padStart(2, "0")}`;
   const rotas30 = rotas.filter((r) => r.data >= inicio30 && r.status === "concluida");
 
   if (rotas30.length === 0) return insights;
@@ -153,7 +156,7 @@ export default function Dashboard() {
 
   const d30 = new Date();
   d30.setDate(d30.getDate() - 30);
-  const inicio30 = d30.toISOString().split("T")[0];
+  const inicio30 = `${d30.getFullYear()}-${String(d30.getMonth() + 1).padStart(2, "0")}-${String(d30.getDate()).padStart(2, "0")}`;
   const rotas30 = todasRotas.filter((r) => r.data >= inicio30);
   const ocorrenciasPorTipo: Record<string, number> = {};
   rotas30.forEach((r) =>
@@ -192,8 +195,8 @@ export default function Dashboard() {
     <ScrollView style={{ flex: 1, backgroundColor: "#f3f4f6" }} contentContainerStyle={{ paddingBottom: 24 }}>
       {/* Header */}
       <View style={{ backgroundColor: "#ee4d2d", paddingTop: insets.top + 16, paddingBottom: 24, paddingHorizontal: 16 }}>
-        <Text style={{ fontSize: 14, color: "rgba(255,255,255,0.8)" }}>Bem-vindo ao</Text>
-        <Text style={{ fontSize: 24, fontWeight: "700", color: "#ffffff" }}>Logística Shopee</Text>
+        <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.75)" }}>Gestão de Entregas</Text>
+        <Text style={{ fontSize: 26, fontWeight: "700", color: "#ffffff", letterSpacing: -0.5 }}>RouteLog</Text>
         <Text style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", marginTop: 4 }}>
           {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
         </Text>
@@ -334,6 +337,12 @@ export default function Dashboard() {
             </TouchableOpacity>
           ))}
         </View>
+      </View>
+
+      {/* Rodapé */}
+      <View style={{ alignItems: "center", paddingVertical: 20, gap: 2 }}>
+        <Text style={{ fontSize: 12, fontWeight: "600", color: "#9ca3af", letterSpacing: 0.5 }}>RouteLog</Text>
+        <Text style={{ fontSize: 11, color: "#d1d5db" }}>Desenvolvido por Josevan Oliveira</Text>
       </View>
     </ScrollView>
   );

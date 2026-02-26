@@ -11,6 +11,8 @@ interface VeiculoInfo {
   ultimaManutencao?: Manutencao;
   vencida: boolean;
   consumoMedio?: number;
+  ultimoConsumo?: number;
+  totalAbastecimentos: number;
 }
 
 export default function ManutencaoPage() {
@@ -34,16 +36,25 @@ export default function ManutencaoPage() {
 
             const comConsumo: Abastecimento[] = abastecimentos
               .filter((a) => a.consumoKmL !== undefined)
-              .slice(0, 3);
+              .slice(0, 5);
 
             const consumoMedio =
               comConsumo.length > 0
                 ? comConsumo.reduce((s, a) => s + a.consumoKmL!, 0) / comConsumo.length
                 : undefined;
 
+            const ultimoConsumo = comConsumo.length > 0 ? comConsumo[0].consumoKmL : undefined;
+
             const vencida = ultima ? manutencaoVencida(ultima, v.kmAtual ?? ultima.kmAtual) : false;
 
-            return { veiculo: v, ultimaManutencao: ultima ?? undefined, vencida, consumoMedio };
+            return {
+              veiculo: v,
+              ultimaManutencao: ultima ?? undefined,
+              vencida,
+              consumoMedio,
+              ultimoConsumo,
+              totalAbastecimentos: abastecimentos.length,
+            };
           })
         );
 
@@ -78,7 +89,7 @@ export default function ManutencaoPage() {
           </View>
         )}
 
-        {infos.map(({ veiculo, ultimaManutencao, vencida, consumoMedio }) => (
+        {infos.map(({ veiculo, ultimaManutencao, vencida, consumoMedio, ultimoConsumo, totalAbastecimentos }) => (
           <View
             key={veiculo.id}
             style={{ backgroundColor: "#ffffff", borderRadius: 16, overflow: "hidden", borderLeftWidth: 4, borderLeftColor: vencida ? "#ef4444" : "#e5e7eb" }}
@@ -105,13 +116,27 @@ export default function ManutencaoPage() {
             {/* Stats */}
             <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingBottom: 12 }}>
               {[
-                { label: "KM Atual", valor: veiculo.kmAtual !== undefined ? veiculo.kmAtual.toLocaleString("pt-BR") : "—" },
-                { label: "Consumo", valor: consumoMedio !== undefined ? `${consumoMedio.toFixed(1).replace(".", ",")} km/L` : "—" },
-                { label: "Últ. Troca", valor: ultimaManutencao ? `${ultimaManutencao.kmAtual.toLocaleString("pt-BR")} km` : "—", destaque: vencida },
+                { label: "KM Atual", valor: veiculo.kmAtual !== undefined ? veiculo.kmAtual.toLocaleString("pt-BR") : "—", sub: undefined, destaque: false },
+                {
+                  label: "Consumo médio",
+                  valor: consumoMedio !== undefined ? `${consumoMedio.toFixed(1).replace(".", ",")} km/L` : "—",
+                  sub: totalAbastecimentos === 0
+                    ? "sem abastecimentos"
+                    : consumoMedio !== undefined && ultimoConsumo !== undefined && ultimoConsumo !== consumoMedio
+                    ? `último: ${ultimoConsumo.toFixed(1).replace(".", ",")} km/L`
+                    : totalAbastecimentos === 1
+                    ? "1 abastecimento"
+                    : `${Math.min(totalAbastecimentos, 5)} registros`,
+                  destaque: false,
+                },
+                { label: "Últ. Troca", valor: ultimaManutencao ? `${ultimaManutencao.kmAtual.toLocaleString("pt-BR")} km` : "—", sub: undefined, destaque: vencida },
               ].map((stat) => (
                 <View key={stat.label} style={{ flex: 1, backgroundColor: stat.destaque ? "#fef2f2" : "#f9fafb", borderRadius: 12, padding: 8, alignItems: "center" }}>
                   <Text style={{ fontSize: 11, color: stat.destaque ? "#ef4444" : "#9ca3af" }}>{stat.label}</Text>
                   <Text style={{ fontWeight: "700", color: stat.destaque ? "#b91c1c" : "#1f2937", fontSize: 13 }}>{stat.valor}</Text>
+                  {stat.sub !== undefined && (
+                    <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 1 }}>{stat.sub}</Text>
+                  )}
                 </View>
               ))}
             </View>

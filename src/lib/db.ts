@@ -1,4 +1,8 @@
 import * as SQLite from "expo-sqlite";
+import {
+  syncCidade, syncEntregador, syncVeiculo, syncRota,
+  deletarCidadeSupabase, deletarEntregadorSupabase, deletarVeiculoSupabase,
+} from "./supabase";
 
 // ── Types ─────────────────────────────────────────────────────
 
@@ -138,17 +142,16 @@ export interface Manutencao {
 
 let dbInstance: SQLite.SQLiteDatabase | null = null;
 
-async function getDB(): Promise<SQLite.SQLiteDatabase> {
+function getDB(): SQLite.SQLiteDatabase {
   if (dbInstance) return dbInstance;
-  dbInstance = await SQLite.openDatabaseAsync("logistica.db");
-  await initDB(dbInstance);
+  dbInstance = SQLite.openDatabaseSync("logistica.db");
+  initDB(dbInstance);
   return dbInstance;
 }
 
-async function initDB(db: SQLite.SQLiteDatabase): Promise<void> {
-  await db.execAsync(`
-    PRAGMA journal_mode = WAL;
-
+function initDB(db: SQLite.SQLiteDatabase): void {
+  db.execSync("PRAGMA journal_mode = WAL;");
+  db.execSync(`
     CREATE TABLE IF NOT EXISTS cidades (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nome TEXT NOT NULL,
@@ -336,141 +339,187 @@ function rowToRotaModelo(row: any): RotaModelo {
 // ── Cidades ──────────────────────────────────────────────────
 
 export async function listarCidades(): Promise<Cidade[]> {
-  const db = await getDB();
-  const rows = await db.getAllAsync("SELECT * FROM cidades ORDER BY nome");
+  const db = getDB();
+  const rows = db.getAllSync("SELECT * FROM cidades ORDER BY nome");
   return rows.map(rowToCidade);
 }
 
 export async function salvarCidade(cidade: Cidade): Promise<number> {
-  const db = await getDB();
+  const db = getDB();
+  let id: number;
+  let criadoEm: string;
+
   if (cidade.id) {
-    await db.runAsync(
+    db.runSync(
       "UPDATE cidades SET nome=?, uf=?, distanciaKm=? WHERE id=?",
-      [cidade.nome, cidade.uf, cidade.distanciaKm ?? null, cidade.id]
+      cidade.nome, cidade.uf, cidade.distanciaKm ?? null, cidade.id
     );
-    return cidade.id;
+    id = cidade.id;
+    const row = db.getFirstSync("SELECT criadoEm FROM cidades WHERE id=?", id) as any;
+    criadoEm = row?.criadoEm ?? new Date().toISOString();
+  } else {
+    criadoEm = new Date().toISOString();
+    const result = db.runSync(
+      "INSERT INTO cidades (nome, uf, distanciaKm, criadoEm) VALUES (?,?,?,?)",
+      cidade.nome, cidade.uf, cidade.distanciaKm ?? null, criadoEm
+    );
+    id = result.lastInsertRowId;
   }
-  const result = await db.runAsync(
-    "INSERT INTO cidades (nome, uf, distanciaKm, criadoEm) VALUES (?,?,?,?)",
-    [cidade.nome, cidade.uf, cidade.distanciaKm ?? null, new Date().toISOString()]
-  );
-  return result.lastInsertRowId;
+
+  syncCidade(id, cidade.nome, cidade.uf, cidade.distanciaKm, criadoEm);
+  return id;
 }
 
 export async function deletarCidade(id: number): Promise<void> {
-  const db = await getDB();
-  await db.runAsync("DELETE FROM cidades WHERE id=?", [id]);
+  const db = getDB();
+  db.runSync("DELETE FROM cidades WHERE id=?", id);
+  deletarCidadeSupabase(id);
 }
 
 // ── Entregadores ─────────────────────────────────────────────
 
 export async function listarEntregadores(): Promise<Entregador[]> {
-  const db = await getDB();
-  const rows = await db.getAllAsync("SELECT * FROM entregadores ORDER BY nome");
+  const db = getDB();
+  const rows = db.getAllSync("SELECT * FROM entregadores ORDER BY nome");
   return rows.map(rowToEntregador);
 }
 
 export async function salvarEntregador(e: Entregador): Promise<number> {
-  const db = await getDB();
+  const db = getDB();
   const cidadesJson = JSON.stringify(e.cidadesIds);
+  let id: number;
+  let criadoEm: string;
+
   if (e.id) {
-    await db.runAsync(
+    db.runSync(
       "UPDATE entregadores SET nome=?, telefone=?, cidadesIds=?, ativo=? WHERE id=?",
-      [e.nome, e.telefone, cidadesJson, e.ativo ? 1 : 0, e.id]
+      e.nome, e.telefone, cidadesJson, e.ativo ? 1 : 0, e.id
     );
-    return e.id;
+    id = e.id;
+    const row = db.getFirstSync("SELECT criadoEm FROM entregadores WHERE id=?", id) as any;
+    criadoEm = row?.criadoEm ?? new Date().toISOString();
+  } else {
+    criadoEm = new Date().toISOString();
+    const result = db.runSync(
+      "INSERT INTO entregadores (nome, telefone, cidadesIds, ativo, criadoEm) VALUES (?,?,?,?,?)",
+      e.nome, e.telefone, cidadesJson, e.ativo ? 1 : 0, criadoEm
+    );
+    id = result.lastInsertRowId;
   }
-  const result = await db.runAsync(
-    "INSERT INTO entregadores (nome, telefone, cidadesIds, ativo, criadoEm) VALUES (?,?,?,?,?)",
-    [e.nome, e.telefone, cidadesJson, e.ativo ? 1 : 0, new Date().toISOString()]
-  );
-  return result.lastInsertRowId;
+
+  syncEntregador(id, e.nome, e.telefone, e.cidadesIds, e.ativo, criadoEm);
+  return id;
 }
 
 export async function deletarEntregador(id: number): Promise<void> {
-  const db = await getDB();
-  await db.runAsync("DELETE FROM entregadores WHERE id=?", [id]);
+  const db = getDB();
+  db.runSync("DELETE FROM entregadores WHERE id=?", id);
+  deletarEntregadorSupabase(id);
 }
 
 // ── Veículos ─────────────────────────────────────────────────
 
 export async function listarVeiculos(): Promise<Veiculo[]> {
-  const db = await getDB();
-  const rows = await db.getAllAsync("SELECT * FROM veiculos ORDER BY placa");
+  const db = getDB();
+  const rows = db.getAllSync("SELECT * FROM veiculos ORDER BY placa");
   return rows.map(rowToVeiculo);
 }
 
 export async function salvarVeiculo(v: Veiculo): Promise<number> {
-  const db = await getDB();
+  const db = getDB();
+  let id: number;
+  let criadoEm: string;
+
   if (v.id) {
-    await db.runAsync(
+    db.runSync(
       "UPDATE veiculos SET placa=?, modelo=?, motoristaPadrao=?, ativo=?, kmAtual=? WHERE id=?",
-      [v.placa, v.modelo, v.motoristaPadrao ?? null, v.ativo ? 1 : 0, v.kmAtual ?? null, v.id]
+      v.placa, v.modelo, v.motoristaPadrao ?? null, v.ativo ? 1 : 0, v.kmAtual ?? null, v.id
     );
-    return v.id;
+    id = v.id;
+    const row = db.getFirstSync("SELECT criadoEm FROM veiculos WHERE id=?", id) as any;
+    criadoEm = row?.criadoEm ?? new Date().toISOString();
+  } else {
+    criadoEm = new Date().toISOString();
+    const result = db.runSync(
+      "INSERT INTO veiculos (placa, modelo, motoristaPadrao, ativo, kmAtual, criadoEm) VALUES (?,?,?,?,?,?)",
+      v.placa, v.modelo, v.motoristaPadrao ?? null, v.ativo ? 1 : 0, v.kmAtual ?? null, criadoEm
+    );
+    id = result.lastInsertRowId;
   }
-  const result = await db.runAsync(
-    "INSERT INTO veiculos (placa, modelo, motoristaPadrao, ativo, kmAtual, criadoEm) VALUES (?,?,?,?,?,?)",
-    [v.placa, v.modelo, v.motoristaPadrao ?? null, v.ativo ? 1 : 0, v.kmAtual ?? null, new Date().toISOString()]
-  );
-  return result.lastInsertRowId;
+
+  syncVeiculo(id, v.placa, v.modelo, v.motoristaPadrao, v.ativo, v.kmAtual, criadoEm);
+  return id;
 }
 
 export async function deletarVeiculo(id: number): Promise<void> {
-  const db = await getDB();
-  await db.runAsync("DELETE FROM veiculos WHERE id=?", [id]);
+  const db = getDB();
+  db.runSync("DELETE FROM veiculos WHERE id=?", id);
+  deletarVeiculoSupabase(id);
 }
 
 export async function buscarVeiculo(id: number): Promise<Veiculo | undefined> {
-  const db = await getDB();
-  const row = await db.getFirstAsync("SELECT * FROM veiculos WHERE id=?", [id]);
+  const db = getDB();
+  const row = db.getFirstSync("SELECT * FROM veiculos WHERE id=?", id);
   return row ? rowToVeiculo(row) : undefined;
 }
 
 // ── Rotas ─────────────────────────────────────────────────────
 
 export async function listarRotas(): Promise<Rota[]> {
-  const db = await getDB();
-  const rows = await db.getAllAsync("SELECT * FROM rotas ORDER BY criadoEm DESC");
+  const db = getDB();
+  const rows = db.getAllSync("SELECT * FROM rotas ORDER BY criadoEm DESC");
   return rows.map(rowToRota);
 }
 
 export async function buscarRota(id: number): Promise<Rota | undefined> {
-  const db = await getDB();
-  const row = await db.getFirstAsync("SELECT * FROM rotas WHERE id=?", [id]);
+  const db = getDB();
+  const row = db.getFirstSync("SELECT * FROM rotas WHERE id=?", id);
   return row ? rowToRota(row) : undefined;
 }
 
 export async function salvarRota(rota: Rota): Promise<number> {
-  const db = await getDB();
+  const db = getDB();
   const itensJson = JSON.stringify(rota.itens);
+  let id: number;
+  let criadoEm: string;
+
   if (rota.id) {
-    await db.runAsync(
+    db.runSync(
       "UPDATE rotas SET data=?, veiculoId=?, veiculoPlaca=?, motorista=?, kmSaida=?, kmChegada=?, horaSaida=?, horaChegada=?, status=?, itens=? WHERE id=?",
-      [rota.data, rota.veiculoId, rota.veiculoPlaca, rota.motorista, rota.kmSaida, rota.kmChegada ?? null, rota.horaSaida, rota.horaChegada ?? null, rota.status, itensJson, rota.id]
+      rota.data, rota.veiculoId, rota.veiculoPlaca, rota.motorista, rota.kmSaida, rota.kmChegada ?? null, rota.horaSaida, rota.horaChegada ?? null, rota.status, itensJson, rota.id
     );
-    return rota.id;
+    id = rota.id;
+    const row = db.getFirstSync("SELECT criadoEm FROM rotas WHERE id=?", id) as any;
+    criadoEm = row?.criadoEm ?? rota.criadoEm;
+  } else {
+    criadoEm = rota.criadoEm ?? new Date().toISOString();
+    const result = db.runSync(
+      "INSERT INTO rotas (data, veiculoId, veiculoPlaca, motorista, kmSaida, kmChegada, horaSaida, horaChegada, status, itens, criadoEm) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+      rota.data, rota.veiculoId, rota.veiculoPlaca, rota.motorista, rota.kmSaida, rota.kmChegada ?? null, rota.horaSaida, rota.horaChegada ?? null, rota.status, itensJson, criadoEm
+    );
+    id = result.lastInsertRowId;
   }
-  const result = await db.runAsync(
-    "INSERT INTO rotas (data, veiculoId, veiculoPlaca, motorista, kmSaida, kmChegada, horaSaida, horaChegada, status, itens, criadoEm) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-    [rota.data, rota.veiculoId, rota.veiculoPlaca, rota.motorista, rota.kmSaida, rota.kmChegada ?? null, rota.horaSaida, rota.horaChegada ?? null, rota.status, itensJson, new Date().toISOString()]
-  );
-  return result.lastInsertRowId;
+
+  // Fire-and-forget: cada ação no app (concluir cidade, ocorrência,
+  // finalizar rota) chama salvarRota com a rota completa — a sincronização
+  // é automática sem nenhuma alteração nas telas.
+  syncRota({ ...rota, id, criadoEm });
+  return id;
 }
 
 export async function rotaEmAndamento(): Promise<Rota | undefined> {
-  const db = await getDB();
-  const row = await db.getFirstAsync("SELECT * FROM rotas WHERE status='em_andamento' LIMIT 1");
+  const db = getDB();
+  const row = db.getFirstSync("SELECT * FROM rotas WHERE status='em_andamento' LIMIT 1");
   return row ? rowToRota(row) : undefined;
 }
 
 // ── Abastecimentos ────────────────────────────────────────────
 
 export async function listarAbastecimentosPorVeiculo(veiculoId: number): Promise<Abastecimento[]> {
-  const db = await getDB();
-  const rows = await db.getAllAsync(
+  const db = getDB();
+  const rows = db.getAllSync(
     "SELECT * FROM abastecimentos WHERE veiculoId=? ORDER BY kmAtual DESC",
-    [veiculoId]
+    veiculoId
   );
   return rows.map(rowToAbastecimento);
 }
@@ -480,17 +529,17 @@ export async function listarAbastecimentosPorPeriodo(
   dataFim: string,
   veiculoId?: number
 ): Promise<Abastecimento[]> {
-  const db = await getDB();
+  const db = getDB();
   let rows: any[];
   if (veiculoId !== undefined) {
-    rows = await db.getAllAsync(
+    rows = db.getAllSync(
       "SELECT * FROM abastecimentos WHERE data>=? AND data<=? AND veiculoId=? ORDER BY data DESC",
-      [dataInicio, dataFim, veiculoId]
+      dataInicio, dataFim, veiculoId
     );
   } else {
-    rows = await db.getAllAsync(
+    rows = db.getAllSync(
       "SELECT * FROM abastecimentos WHERE data>=? AND data<=? ORDER BY data DESC",
-      [dataInicio, dataFim]
+      dataInicio, dataFim
     );
   }
   return rows.map(rowToAbastecimento);
@@ -500,16 +549,16 @@ export async function buscarUltimoAbastecimento(
   veiculoId: number,
   kmMenorQue: number
 ): Promise<Abastecimento | undefined> {
-  const db = await getDB();
-  const row = await db.getFirstAsync(
+  const db = getDB();
+  const row = db.getFirstSync(
     "SELECT * FROM abastecimentos WHERE veiculoId=? AND kmAtual<? ORDER BY kmAtual DESC LIMIT 1",
-    [veiculoId, kmMenorQue]
+    veiculoId, kmMenorQue
   );
   return row ? rowToAbastecimento(row) : undefined;
 }
 
 export async function salvarAbastecimento(a: Abastecimento): Promise<number> {
-  const db = await getDB();
+  const db = getDB();
   const dados = { ...a };
 
   if (!dados.id) {
@@ -529,53 +578,53 @@ export async function salvarAbastecimento(a: Abastecimento): Promise<number> {
       await salvarVeiculo({ ...veiculo, kmAtual: a.kmAtual });
     }
 
-    const result = await db.runAsync(
+    const result = db.runSync(
       "INSERT INTO abastecimentos (veiculoId, veiculoPlaca, data, kmAtual, litros, valorTotal, tipoCombustivel, posto, observacao, kmAnterior, consumoKmL, custoKm, criadoEm) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-      [dados.veiculoId, dados.veiculoPlaca, dados.data, dados.kmAtual, dados.litros, dados.valorTotal, dados.tipoCombustivel, dados.posto ?? null, dados.observacao ?? null, dados.kmAnterior ?? null, dados.consumoKmL ?? null, dados.custoKm ?? null, dados.criadoEm]
+      dados.veiculoId, dados.veiculoPlaca, dados.data, dados.kmAtual, dados.litros, dados.valorTotal, dados.tipoCombustivel, dados.posto ?? null, dados.observacao ?? null, dados.kmAnterior ?? null, dados.consumoKmL ?? null, dados.custoKm ?? null, dados.criadoEm
     );
     return result.lastInsertRowId;
   }
 
-  await db.runAsync(
+  db.runSync(
     "UPDATE abastecimentos SET veiculoId=?, veiculoPlaca=?, data=?, kmAtual=?, litros=?, valorTotal=?, tipoCombustivel=?, posto=?, observacao=?, kmAnterior=?, consumoKmL=?, custoKm=? WHERE id=?",
-    [dados.veiculoId, dados.veiculoPlaca, dados.data, dados.kmAtual, dados.litros, dados.valorTotal, dados.tipoCombustivel, dados.posto ?? null, dados.observacao ?? null, dados.kmAnterior ?? null, dados.consumoKmL ?? null, dados.custoKm ?? null, dados.id!]
+    dados.veiculoId, dados.veiculoPlaca, dados.data, dados.kmAtual, dados.litros, dados.valorTotal, dados.tipoCombustivel, dados.posto ?? null, dados.observacao ?? null, dados.kmAnterior ?? null, dados.consumoKmL ?? null, dados.custoKm ?? null, dados.id!
   );
   return dados.id!;
 }
 
 export async function deletarAbastecimento(id: number): Promise<void> {
-  const db = await getDB();
-  await db.runAsync("DELETE FROM abastecimentos WHERE id=?", [id]);
+  const db = getDB();
+  db.runSync("DELETE FROM abastecimentos WHERE id=?", id);
 }
 
 // ── Manutenções ───────────────────────────────────────────────
 
 export async function listarManutencoesPorVeiculo(veiculoId: number): Promise<Manutencao[]> {
-  const db = await getDB();
-  const rows = await db.getAllAsync(
+  const db = getDB();
+  const rows = db.getAllSync(
     "SELECT * FROM manutencoes WHERE veiculoId=? ORDER BY kmAtual DESC",
-    [veiculoId]
+    veiculoId
   );
   return rows.map(rowToManutencao);
 }
 
 export async function buscarUltimaManutencao(veiculoId: number): Promise<Manutencao | undefined> {
-  const db = await getDB();
-  const row = await db.getFirstAsync(
+  const db = getDB();
+  const row = db.getFirstSync(
     "SELECT * FROM manutencoes WHERE veiculoId=? ORDER BY kmAtual DESC LIMIT 1",
-    [veiculoId]
+    veiculoId
   );
   return row ? rowToManutencao(row) : undefined;
 }
 
 export async function salvarManutencao(m: Manutencao): Promise<number> {
-  const db = await getDB();
+  const db = getDB();
   const itensJson = JSON.stringify(m.itensSubstituidos);
 
   if (m.id) {
-    await db.runAsync(
+    db.runSync(
       "UPDATE manutencoes SET veiculoId=?, veiculoPlaca=?, data=?, kmAtual=?, tipoOleo=?, itensSubstituidos=?, proximaTrocaKm=?, proximaTrocaData=?, observacao=? WHERE id=?",
-      [m.veiculoId, m.veiculoPlaca, m.data, m.kmAtual, m.tipoOleo, itensJson, m.proximaTrocaKm ?? null, m.proximaTrocaData ?? null, m.observacao ?? null, m.id]
+      m.veiculoId, m.veiculoPlaca, m.data, m.kmAtual, m.tipoOleo, itensJson, m.proximaTrocaKm ?? null, m.proximaTrocaData ?? null, m.observacao ?? null, m.id
     );
     return m.id;
   }
@@ -585,22 +634,22 @@ export async function salvarManutencao(m: Manutencao): Promise<number> {
     await salvarVeiculo({ ...veiculo, kmAtual: m.kmAtual });
   }
 
-  const result = await db.runAsync(
+  const result = db.runSync(
     "INSERT INTO manutencoes (veiculoId, veiculoPlaca, data, kmAtual, tipoOleo, itensSubstituidos, proximaTrocaKm, proximaTrocaData, observacao, criadoEm) VALUES (?,?,?,?,?,?,?,?,?,?)",
-    [m.veiculoId, m.veiculoPlaca, m.data, m.kmAtual, m.tipoOleo, itensJson, m.proximaTrocaKm ?? null, m.proximaTrocaData ?? null, m.observacao ?? null, new Date().toISOString()]
+    m.veiculoId, m.veiculoPlaca, m.data, m.kmAtual, m.tipoOleo, itensJson, m.proximaTrocaKm ?? null, m.proximaTrocaData ?? null, m.observacao ?? null, new Date().toISOString()
   );
   return result.lastInsertRowId;
 }
 
 export async function deletarManutencao(id: number): Promise<void> {
-  const db = await getDB();
-  await db.runAsync("DELETE FROM manutencoes WHERE id=?", [id]);
+  const db = getDB();
+  db.runSync("DELETE FROM manutencoes WHERE id=?", id);
 }
 
 export function manutencaoVencida(ultima: Manutencao, kmAtual: number): boolean {
   if (ultima.proximaTrocaKm && kmAtual >= ultima.proximaTrocaKm) return true;
   if (ultima.proximaTrocaData) {
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = dataHojeISO();
     if (hoje >= ultima.proximaTrocaData) return true;
   }
   return false;
@@ -609,31 +658,31 @@ export function manutencaoVencida(ultima: Manutencao, kmAtual: number): boolean 
 // ── Rotas Modelo ──────────────────────────────────────────────
 
 export async function listarRotasModelo(): Promise<RotaModelo[]> {
-  const db = await getDB();
-  const rows = await db.getAllAsync("SELECT * FROM rotasModelo ORDER BY nome");
+  const db = getDB();
+  const rows = db.getAllSync("SELECT * FROM rotasModelo ORDER BY nome");
   return rows.map(rowToRotaModelo);
 }
 
 export async function salvarRotaModelo(m: RotaModelo): Promise<number> {
-  const db = await getDB();
+  const db = getDB();
   const itensJson = JSON.stringify(m.itens);
   if (m.id) {
-    await db.runAsync(
+    db.runSync(
       "UPDATE rotasModelo SET nome=?, descricao=?, veiculoId=?, veiculoPlaca=?, itens=? WHERE id=?",
-      [m.nome, m.descricao ?? null, m.veiculoId, m.veiculoPlaca, itensJson, m.id]
+      m.nome, m.descricao ?? null, m.veiculoId, m.veiculoPlaca, itensJson, m.id
     );
     return m.id;
   }
-  const result = await db.runAsync(
+  const result = db.runSync(
     "INSERT INTO rotasModelo (nome, descricao, veiculoId, veiculoPlaca, itens, criadoEm) VALUES (?,?,?,?,?,?)",
-    [m.nome, m.descricao ?? null, m.veiculoId, m.veiculoPlaca, itensJson, new Date().toISOString()]
+    m.nome, m.descricao ?? null, m.veiculoId, m.veiculoPlaca, itensJson, new Date().toISOString()
   );
   return result.lastInsertRowId;
 }
 
 export async function deletarRotaModelo(id: number): Promise<void> {
-  const db = await getDB();
-  await db.runAsync("DELETE FROM rotasModelo WHERE id=?", [id]);
+  const db = getDB();
+  db.runSync("DELETE FROM rotasModelo WHERE id=?", id);
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -671,6 +720,24 @@ export function formatarData(iso: string): string {
   return `${dia}/${mes}/${ano}`;
 }
 
+/** Converte "DD/MM/AAAA" → "AAAA-MM-DD". Retorna null se inválido. */
+export function parseDateBR(br: string): string | null {
+  const parts = br.split("/");
+  if (parts.length !== 3) return null;
+  const [dia, mes, ano] = parts;
+  if (!dia || !mes || !ano || ano.length !== 4) return null;
+  return `${ano}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+}
+
+/** Converte "AAAA-MM-DD" → "DD/MM/AAAA" para exibição em campos de formulário. */
+export function isoParaBR(iso: string): string {
+  if (!iso) return "";
+  const parts = iso.split("-");
+  if (parts.length !== 3) return iso;
+  const [ano, mes, dia] = parts;
+  return `${dia}/${mes}/${ano}`;
+}
+
 export function horaAtual(): string {
   const now = new Date();
   const h = String(now.getHours()).padStart(2, "0");
@@ -679,5 +746,144 @@ export function horaAtual(): string {
 }
 
 export function dataHojeISO(): string {
-  return new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const ano = now.getFullYear();
+  const mes = String(now.getMonth() + 1).padStart(2, "0");
+  const dia = String(now.getDate()).padStart(2, "0");
+  return `${ano}-${mes}-${dia}`;
+}
+
+// ── Backup / Restore ──────────────────────────────────────────
+
+export type TabelaBackup = "cidades" | "entregadores" | "veiculos" | "rotas" | "abastecimentos" | "manutencoes" | "rotasModelo";
+
+export interface BackupData {
+  versao: number;
+  geradoEm: string;
+  tabelas: Partial<Record<TabelaBackup, any[]>>;
+}
+
+export async function gerarBackup(tabelas: TabelaBackup[]): Promise<BackupData> {
+  const db = getDB();
+  const dados: Partial<Record<TabelaBackup, any[]>> = {};
+
+  for (const tabela of tabelas) {
+    const mapa: Record<TabelaBackup, string> = {
+      cidades: "SELECT * FROM cidades ORDER BY id",
+      entregadores: "SELECT * FROM entregadores ORDER BY id",
+      veiculos: "SELECT * FROM veiculos ORDER BY id",
+      rotas: "SELECT * FROM rotas ORDER BY id",
+      abastecimentos: "SELECT * FROM abastecimentos ORDER BY id",
+      manutencoes: "SELECT * FROM manutencoes ORDER BY id",
+      rotasModelo: "SELECT * FROM rotasModelo ORDER BY id",
+    };
+    dados[tabela] = db.getAllSync(mapa[tabela]) as any[];
+  }
+
+  return {
+    versao: 1,
+    geradoEm: new Date().toISOString(),
+    tabelas: dados,
+  };
+}
+
+export async function restaurarBackup(
+  backup: BackupData,
+  tabelas: TabelaBackup[]
+): Promise<{ tabela: TabelaBackup; inseridos: number }[]> {
+  const db = getDB();
+  const resultado: { tabela: TabelaBackup; inseridos: number }[] = [];
+
+  for (const tabela of tabelas) {
+    const registros = backup.tabelas[tabela];
+    if (!registros || registros.length === 0) {
+      resultado.push({ tabela, inseridos: 0 });
+      continue;
+    }
+
+    let inseridos = 0;
+
+    if (tabela === "cidades") {
+      for (const r of registros) {
+        const existe = db.getFirstSync("SELECT id FROM cidades WHERE id=?", r.id);
+        if (!existe) {
+          db.runSync(
+            "INSERT INTO cidades (id, nome, uf, distanciaKm, criadoEm) VALUES (?,?,?,?,?)",
+            r.id, r.nome, r.uf, r.distanciaKm ?? null, r.criadoEm
+          );
+          inseridos++;
+        }
+      }
+    } else if (tabela === "entregadores") {
+      for (const r of registros) {
+        const existe = db.getFirstSync("SELECT id FROM entregadores WHERE id=?", r.id);
+        if (!existe) {
+          db.runSync(
+            "INSERT INTO entregadores (id, nome, telefone, cidadesIds, ativo, criadoEm) VALUES (?,?,?,?,?,?)",
+            r.id, r.nome, r.telefone, r.cidadesIds, r.ativo, r.criadoEm
+          );
+          inseridos++;
+        }
+      }
+    } else if (tabela === "veiculos") {
+      for (const r of registros) {
+        const existe = db.getFirstSync("SELECT id FROM veiculos WHERE id=?", r.id);
+        if (!existe) {
+          db.runSync(
+            "INSERT INTO veiculos (id, placa, modelo, motoristaPadrao, ativo, kmAtual, criadoEm) VALUES (?,?,?,?,?,?,?)",
+            r.id, r.placa, r.modelo, r.motoristaPadrao ?? null, r.ativo, r.kmAtual ?? null, r.criadoEm
+          );
+          inseridos++;
+        }
+      }
+    } else if (tabela === "rotas") {
+      for (const r of registros) {
+        const existe = db.getFirstSync("SELECT id FROM rotas WHERE id=?", r.id);
+        if (!existe) {
+          db.runSync(
+            "INSERT INTO rotas (id, data, veiculoId, veiculoPlaca, motorista, kmSaida, kmChegada, horaSaida, horaChegada, status, itens, criadoEm) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+            r.id, r.data, r.veiculoId, r.veiculoPlaca, r.motorista, r.kmSaida, r.kmChegada ?? null, r.horaSaida, r.horaChegada ?? null, r.status, r.itens, r.criadoEm
+          );
+          inseridos++;
+        }
+      }
+    } else if (tabela === "abastecimentos") {
+      for (const r of registros) {
+        const existe = db.getFirstSync("SELECT id FROM abastecimentos WHERE id=?", r.id);
+        if (!existe) {
+          db.runSync(
+            "INSERT INTO abastecimentos (id, veiculoId, veiculoPlaca, data, kmAtual, litros, valorTotal, tipoCombustivel, posto, observacao, kmAnterior, consumoKmL, custoKm, criadoEm) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            r.id, r.veiculoId, r.veiculoPlaca, r.data, r.kmAtual, r.litros, r.valorTotal, r.tipoCombustivel, r.posto ?? null, r.observacao ?? null, r.kmAnterior ?? null, r.consumoKmL ?? null, r.custoKm ?? null, r.criadoEm
+          );
+          inseridos++;
+        }
+      }
+    } else if (tabela === "manutencoes") {
+      for (const r of registros) {
+        const existe = db.getFirstSync("SELECT id FROM manutencoes WHERE id=?", r.id);
+        if (!existe) {
+          db.runSync(
+            "INSERT INTO manutencoes (id, veiculoId, veiculoPlaca, data, kmAtual, tipoOleo, itensSubstituidos, proximaTrocaKm, proximaTrocaData, observacao, criadoEm) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            r.id, r.veiculoId, r.veiculoPlaca, r.data, r.kmAtual, r.tipoOleo, r.itensSubstituidos, r.proximaTrocaKm ?? null, r.proximaTrocaData ?? null, r.observacao ?? null, r.criadoEm
+          );
+          inseridos++;
+        }
+      }
+    } else if (tabela === "rotasModelo") {
+      for (const r of registros) {
+        const existe = db.getFirstSync("SELECT id FROM rotasModelo WHERE id=?", r.id);
+        if (!existe) {
+          db.runSync(
+            "INSERT INTO rotasModelo (id, nome, descricao, veiculoId, veiculoPlaca, itens, criadoEm) VALUES (?,?,?,?,?,?,?)",
+            r.id, r.nome, r.descricao ?? null, r.veiculoId, r.veiculoPlaca, r.itens, r.criadoEm
+          );
+          inseridos++;
+        }
+      }
+    }
+
+    resultado.push({ tabela, inseridos });
+  }
+
+  return resultado;
 }
