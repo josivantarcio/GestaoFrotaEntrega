@@ -1,7 +1,7 @@
 import React from "react";
 import { View, ScrollView, TouchableOpacity, Text } from "react-native";
 import { useRouter } from "expo-router";
-import { MapPin, Users, Truck, BookOpen, ChevronRight, DatabaseBackup } from "lucide-react-native";
+import { MapPin, Users, Truck, BookOpen, ChevronRight, DatabaseBackup, ServerCog } from "lucide-react-native";
 import PageHeader from "@/components/PageHeader";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -55,6 +55,22 @@ export default function CadastrosPage() {
             <Text style={{ fontSize: 12, color: "#3b82f6", marginTop: 2 }}>Exportar ou restaurar dados do sistema</Text>
           </View>
           <ChevronRight size={18} color="#3b82f6" />
+        </TouchableOpacity>
+
+        {/* Configurações do servidor */}
+        <TouchableOpacity
+          onPress={() => router.push("/configuracoes" as any)}
+          activeOpacity={0.7}
+          style={{ backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#bbf7d0", borderRadius: 16, paddingHorizontal: 16, paddingVertical: 16, flexDirection: "row", alignItems: "center", gap: 16 }}
+        >
+          <View style={{ backgroundColor: "#dcfce7", borderRadius: 20, padding: 12 }}>
+            <ServerCog size={22} color="#16a34a" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontWeight: "600", color: "#15803d", fontSize: 15 }}>Configurações do Servidor</Text>
+            <Text style={{ fontSize: 12, color: "#16a34a", marginTop: 2 }}>URL e API Key da retaguarda</Text>
+          </View>
+          <ChevronRight size={18} color="#16a34a" />
         </TouchableOpacity>
       </ScrollView>
     </View>

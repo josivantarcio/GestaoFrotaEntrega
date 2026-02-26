@@ -2,7 +2,7 @@ import * as SQLite from "expo-sqlite";
 import {
   syncCidade, syncEntregador, syncVeiculo, syncRota,
   deletarCidadeSupabase, deletarEntregadorSupabase, deletarVeiculoSupabase,
-} from "./supabase";
+} from "./httpSync";
 
 // ── Types ─────────────────────────────────────────────────────
 

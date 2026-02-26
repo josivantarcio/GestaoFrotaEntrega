@@ -1,4 +1,3 @@
-import "react-native-url-polyfill/auto";
 import "../global.css";
 import { Tabs } from "expo-router";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -73,6 +72,7 @@ function TabsLayout() {
         <Tabs.Screen name="manutencao/[veiculoId]/manutencoes" options={{ href: null }} />
         <Tabs.Screen name="relatorios" options={{ href: null }} />
         <Tabs.Screen name="backup" options={{ href: null }} />
+        <Tabs.Screen name="configuracoes" options={{ href: null }} />
     </Tabs>
   );
 }
