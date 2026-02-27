@@ -50,28 +50,30 @@ export default function ConfiguracoesPage() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 8000);
 
-      const res = await fetch(`${urlTrim}/api/sync/rotas?data=2000-01-01`, {
+      const testUrl = `${urlTrim}/api/sync/rotas?data=2000-01-01`;
+      const res = await fetch(testUrl, {
         headers: { "x-api-key": keyTrim },
         signal: controller.signal,
       });
       clearTimeout(timeout);
 
       if (res.ok || res.status === 400) {
-        // 400 = parâmetro inválido mas servidor respondeu = está no ar
         setStatus("ok");
       } else if (res.status === 401) {
         setStatus("erro");
-        setErroMsg("API Key incorreta (401).");
+        setErroMsg("API Key incorreta (401). Verifique a chave.");
       } else {
         setStatus("erro");
-        setErroMsg(`Servidor retornou ${res.status}.`);
+        setErroMsg(`Servidor retornou HTTP ${res.status}.`);
       }
     } catch (e: any) {
       setStatus("erro");
       if (e?.name === "AbortError") {
-        setErroMsg("Timeout — servidor não respondeu em 8s.");
+        setErroMsg("Timeout (8s) — servidor não respondeu. Verifique se está rodando.");
+      } else if (e?.message?.includes("Network request failed")) {
+        setErroMsg(`Sem acesso à rede. Confirme que o celular está no Wi-Fi e a URL está correta: ${url.trim()}`);
       } else {
-        setErroMsg("Não foi possível conectar. Verifique a URL e a rede.");
+        setErroMsg(`Erro: ${e?.message ?? "desconhecido"}`);
       }
     }
   }, [url, apiKey]);
