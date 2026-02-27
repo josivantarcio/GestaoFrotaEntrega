@@ -32,7 +32,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      "./plugins/withNetworkSecurity"
     ],
     "extra": {
       "router": {},
