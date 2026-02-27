@@ -1,6 +1,8 @@
-# Gestão de Frota & Entrega — Shopee
+# RouteLog — App Mobile
 
-Aplicativo Android nativo para controle operacional de rotas de entrega Shopee. Desenvolvido com React Native + Expo, funciona 100% offline com banco de dados local.
+Aplicativo Android para gestão operacional de rotas de entrega, frota de veículos e controle de campo. Funciona 100% offline com sincronização automática opcional para a retaguarda quando conectado à rede local.
+
+**Desenvolvido por Josevan Oliveira — JTarcio Softhouse**
 
 ---
 
@@ -42,6 +44,13 @@ Aplicativo Android nativo para controle operacional de rotas de entrega Shopee. 
 - Entregadores (cidades atendidas, ativo/inativo)
 - Veículos (placa, modelo, motorista padrão, KM atual)
 - Rotas modelo (paradas predefinidas por veículo)
+
+### Backup & Sincronização
+- Exportação seletiva de dados em JSON (tabelas individuais ou todas)
+- Inclusão opcional das configurações do servidor no backup
+- Restauração sem sobrescrita de registros existentes
+- Sincronização automática com servidor self-hosted via IP local ou DuckDNS
+- Tela de configuração do servidor acessível em Cadastros
 
 ---
 
@@ -93,15 +102,22 @@ src/
 │   ├── SelectModal.tsx                  # Seletor em modal (substitui <select>)
 │   └── BarChart.tsx                     # Gráfico de barras SVG
 └── lib/
-    ├── db.ts                            # Camada de dados (expo-sqlite)
+    ├── db.ts                            # Camada de dados (expo-sqlite, síncrono)
+    ├── httpSync.ts                      # Envio fire-and-forget para o servidor
+    ├── serverConfig.ts                  # Leitura/gravação de URL e API Key
     └── whatsapp.ts                      # Mensagens e abertura do WhatsApp
+
+plugins/
+└── withNetworkSecurity.js              # Plugin Expo: libera HTTP em redes locais (Android 9+)
 ```
 
 ---
 
 ## Banco de Dados
 
-Banco SQLite local (`logistica.db`). Nenhum dado sai do dispositivo.
+Banco SQLite local (`logistica.db`). O app funciona inteiramente offline. A sincronização com o servidor é opcional e fire-and-forget — se o servidor estiver indisponível, o app continua normalmente.
+
+**Datas:** armazenadas em formato ISO `AAAA-MM-DD`. Exibidas e aceitas pela interface em `DD/MM/AAAA`.
 
 | Tabela | Descrição |
 |---|---|
@@ -116,6 +132,19 @@ Banco SQLite local (`logistica.db`). Nenhum dado sai do dispositivo.
 ### Tipos de Ocorrência
 
 `recusa_cliente` · `duplicidade` · `nao_localizado` · `cliente_ausente` · `produto_danificado` · `produto_fora_sistema` · `rota_errada` · `outro`
+
+---
+
+## Sincronização com a Retaguarda
+
+Configure em **Cadastros → Configurações do Servidor**:
+
+| Campo | Rede local (Wi-Fi) | Acesso externo (4G) |
+|---|---|---|
+| URL | `http://192.168.1.100:3000` | `http://routelog.duckdns.org:3000` |
+| API Key | definida no `.env.local` da retaguarda | mesma chave |
+
+Use o botão **Testar Conexão** para validar antes de salvar.
 
 ---
 
@@ -190,6 +219,19 @@ O link para download do APK será exibido ao final do build (cerca de 5–10 min
   "react-native-safe-area-context": "~5.6.0"
 }
 ```
+
+---
+
+## Versão
+
+A versão exibida no rodapé da tela Início corresponde aos 7 primeiros caracteres do hash do commit (`v XXXXXXX`).
+
+---
+
+## Projetos relacionados
+
+- **[RouteLog Retaguarda](https://github.com/josivantarcio/GestaoFrotaEntrega-Retaguarda)** — painel web self-hosted para acompanhamento em tempo real
+- **[RouteLog Tray](https://github.com/josivantarcio/GestaoFrotaEntrega-Tray)** — app de bandeja para notificações no SO
 
 ---
 
