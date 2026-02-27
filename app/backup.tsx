@@ -13,7 +13,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { Download, Upload, CheckSquare, Square, Database, AlertTriangle } from "lucide-react-native";
 import PageHeader from "@/components/PageHeader";
 import Btn from "@/components/Btn";
-import { gerarBackup, restaurarBackup, BackupData, TabelaBackup, dataHojeISO } from "@/lib/db";
+import { gerarBackup, restaurarBackup, restaurarConfig, BackupData, TabelaBackup, dataHojeISO } from "@/lib/db";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const TABELAS: { key: TabelaBackup; label: string; descricao: string }[] = [
@@ -31,9 +31,11 @@ export default function BackupPage() {
   const [selecionadas, setSelecionadas] = useState<Set<TabelaBackup>>(
     new Set(TABELAS.map((t) => t.key))
   );
+  const [incluirConfig, setIncluirConfig] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState<{ tabela: TabelaBackup; inseridos: number }[] | null>(null);
+  const [configRestaurada, setConfigRestaurada] = useState(false);
 
   function toggleTabela(key: TabelaBackup) {
     setSelecionadas((prev) => {
@@ -53,14 +55,14 @@ export default function BackupPage() {
   }
 
   async function exportar() {
-    if (selecionadas.size === 0) {
-      Alert.alert("Atenção", "Selecione ao menos uma tabela para exportar.");
+    if (selecionadas.size === 0 && !incluirConfig) {
+      Alert.alert("Atenção", "Selecione ao menos uma tabela ou inclua as configurações para exportar.");
       return;
     }
     setExportando(true);
     setResultado(null);
     try {
-      const backup = await gerarBackup(Array.from(selecionadas));
+      const backup = await gerarBackup(Array.from(selecionadas), incluirConfig);
       const json = JSON.stringify(backup, null, 2);
       const hoje = dataHojeISO().replace(/-/g, "");
       const nome = `routelog_backup_${hoje}.json`;
@@ -117,7 +119,9 @@ export default function BackupPage() {
       }
 
       const tabelasNoBackup = Object.keys(backup.tabelas) as TabelaBackup[];
-      if (tabelasNoBackup.length === 0) {
+      const temConfig = !!backup.config?.serverUrl;
+
+      if (tabelasNoBackup.length === 0 && !temConfig) {
         Alert.alert("Backup vazio", "O arquivo não contém dados para importar.");
         setImportando(false);
         return;
@@ -128,17 +132,26 @@ export default function BackupPage() {
         .map((t) => TABELAS.find((x) => x.key === t)?.label ?? t)
         .join(", ");
 
+      const descricao = [
+        tabelasLabel ? `Dados de: ${tabelasLabel}` : "",
+        temConfig ? "Configurações do servidor (URL e API Key)" : "",
+      ].filter(Boolean).join("\n");
+
       Alert.alert(
         "Confirmar importação",
-        `Serão importados os dados de:\n${tabelasLabel}\n\nRegistros existentes não serão sobrescritos. Apenas novos registros serão adicionados.`,
+        `${descricao}\n\nRegistros de banco existentes não serão sobrescritos.`,
         [
           { text: "Cancelar", style: "cancel", onPress: () => setImportando(false) },
           {
             text: "Importar",
             onPress: async () => {
               try {
-                const res = await restaurarBackup(backup, tabelasNoBackup);
+                const res = tabelasNoBackup.length > 0
+                  ? await restaurarBackup(backup, tabelasNoBackup)
+                  : [];
+                const configOk = temConfig ? await restaurarConfig(backup) : false;
                 setResultado(res);
+                setConfigRestaurada(configOk);
               } catch (e: any) {
                 Alert.alert("Erro ao importar", e?.message ?? "Erro desconhecido");
               } finally {
@@ -155,6 +168,7 @@ export default function BackupPage() {
   }
 
   const todasSelecionadas = selecionadas.size === TABELAS.length;
+  const totalExportar = selecionadas.size + (incluirConfig ? 1 : 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f3f4f6" }}>
@@ -197,7 +211,7 @@ export default function BackupPage() {
                 gap: 12,
                 paddingHorizontal: 16,
                 paddingVertical: 14,
-                borderBottomWidth: idx < TABELAS.length - 1 ? 1 : 0,
+                borderBottomWidth: 1,
                 borderBottomColor: "#f3f4f6",
               }}
             >
@@ -210,6 +224,20 @@ export default function BackupPage() {
               </View>
             </TouchableOpacity>
           ))}
+
+          {/* Configurações do servidor */}
+          <TouchableOpacity
+            onPress={() => setIncluirConfig((v) => !v)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14 }}
+          >
+            {incluirConfig
+              ? <CheckSquare size={20} color="#16a34a" />
+              : <Square size={20} color="#d1d5db" />}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontWeight: "600", color: "#111827", fontSize: 14 }}>Configurações do Servidor</Text>
+              <Text style={{ fontSize: 12, color: "#9ca3af" }}>URL e API Key da retaguarda</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Exportar */}
@@ -225,12 +253,12 @@ export default function BackupPage() {
             variante="primario"
             fullWidth
             onPress={exportar}
-            disabled={exportando || selecionadas.size === 0}
+            disabled={exportando || totalExportar === 0}
             loading={exportando}
           >
             <Download size={16} color="#ffffff" />
             <Text style={{ color: "#ffffff", fontWeight: "700" }}>
-              {exportando ? "Gerando backup..." : `Exportar (${selecionadas.size} tabela${selecionadas.size !== 1 ? "s" : ""})`}
+              {exportando ? "Gerando backup..." : `Exportar (${totalExportar} item${totalExportar !== 1 ? "s" : ""})`}
             </Text>
           </Btn>
         </View>
@@ -262,10 +290,10 @@ export default function BackupPage() {
         </View>
 
         {/* Resultado da importação */}
-        {resultado && (
+        {(resultado || configRestaurada) && (
           <View style={{ backgroundColor: "#f0fdf4", borderWidth: 1, borderColor: "#bbf7d0", borderRadius: 16, padding: 16, gap: 8 }}>
             <Text style={{ fontWeight: "700", color: "#15803d", fontSize: 14, marginBottom: 4 }}>Importação concluída</Text>
-            {resultado.map((r) => {
+            {resultado?.map((r) => {
               const label = TABELAS.find((t) => t.key === r.tabela)?.label ?? r.tabela;
               return (
                 <View key={r.tabela} style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -276,6 +304,12 @@ export default function BackupPage() {
                 </View>
               );
             })}
+            {configRestaurada && (
+              <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ fontSize: 13, color: "#166534" }}>Configurações do Servidor</Text>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: "#15803d" }}>restauradas</Text>
+              </View>
+            )}
           </View>
         )}
 

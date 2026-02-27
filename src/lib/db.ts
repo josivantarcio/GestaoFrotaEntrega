@@ -760,10 +760,11 @@ export type TabelaBackup = "cidades" | "entregadores" | "veiculos" | "rotas" | "
 export interface BackupData {
   versao: number;
   geradoEm: string;
+  config?: { serverUrl: string; apiKey: string };
   tabelas: Partial<Record<TabelaBackup, any[]>>;
 }
 
-export async function gerarBackup(tabelas: TabelaBackup[]): Promise<BackupData> {
+export async function gerarBackup(tabelas: TabelaBackup[], incluirConfig = false): Promise<BackupData> {
   const db = getDB();
   const dados: Partial<Record<TabelaBackup, any[]>> = {};
 
@@ -780,11 +781,26 @@ export async function gerarBackup(tabelas: TabelaBackup[]): Promise<BackupData> 
     dados[tabela] = db.getAllSync(mapa[tabela]) as any[];
   }
 
+  let config: BackupData["config"] | undefined;
+  if (incluirConfig) {
+    const { getServerConfig } = await import("./serverConfig");
+    const c = await getServerConfig();
+    config = { serverUrl: c.url, apiKey: c.apiKey };
+  }
+
   return {
     versao: 1,
     geradoEm: new Date().toISOString(),
+    ...(config ? { config } : {}),
     tabelas: dados,
   };
+}
+
+export async function restaurarConfig(backup: BackupData): Promise<boolean> {
+  if (!backup.config?.serverUrl) return false;
+  const { saveServerConfig } = await import("./serverConfig");
+  await saveServerConfig({ url: backup.config.serverUrl, apiKey: backup.config.apiKey });
+  return true;
 }
 
 export async function restaurarBackup(
