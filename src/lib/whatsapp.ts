@@ -16,7 +16,7 @@ function kmL(valor: number): string {
 
 const RODAPE = "_RouteLog · Josevan Oliveira_";
 
-export function mensagemSaidaRota(rota: Rota): string {
+export function mensagemSaidaRota(rota: Rota, alertaManutencao?: boolean): string {
   const totalVolumes = rota.itens.reduce((s, i) => s + i.volumesSaida, 0);
   const paradas = rota.itens
     .map((item, i) => `${i + 1}. ${item.cidadeNome} — ${item.volumesSaida} vol. (${item.entregadorNome})`)
@@ -26,6 +26,7 @@ export function mensagemSaidaRota(rota: Rota): string {
     `*SAÍDA DE ROTA* — ${dataBR(rota.data)} às ${rota.horaSaida}\n` +
     `Veículo: *${rota.veiculoPlaca}* · Motorista: *${rota.motorista}*\n` +
     `Volumes: *${totalVolumes}* · KM saída: *${rota.kmSaida}*\n` +
+    (alertaManutencao ? `⚠️ *Troca de óleo vencida — verificar manutenção!*\n` : "") +
     `\n` +
     `*Roteiro:*\n${paradas}\n` +
     `\n${RODAPE}`

@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import Btn from "@/components/Btn";
 import Input from "@/components/Input";
 import SelectModal from "@/components/SelectModal";
-import { buscarRota, salvarRota, listarAbastecimentosPorVeiculo, buscarUltimaManutencao, manutencaoVencida, horaAtual, Rota, ItemRota, Ocorrencia, TipoOcorrencia, TIPOS_OCORRENCIA } from "@/lib/db";
+import { buscarRota, salvarRota, listarAbastecimentosPorVeiculo, buscarUltimaManutencao, manutencaoVencida, horaAtual, Rota, ItemRota, Ocorrencia, TipoOcorrencia, TIPOS_OCORRENCIA, Manutencao } from "@/lib/db";
 import { mensagemCidadeConcluida, mensagemEncerramentoRota, abrirWhatsApp } from "@/lib/whatsapp";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -29,6 +29,7 @@ export default function RotaPage() {
   const [consumoMedio, setConsumoMedio] = useState<number | undefined>(undefined);
   const [alertaManutencao, setAlertaManutencao] = useState(false);
   const [erroKm, setErroKm] = useState("");
+  const [ultimaManutencao, setUltimaManutencao] = useState<Manutencao | null>(null);
 
   async function carregar() {
     const r = await buscarRota(Number(id));
@@ -39,7 +40,10 @@ export default function RotaPage() {
       if (comConsumo.length > 0) {
         setConsumoMedio(comConsumo.reduce((s, a) => s + a.consumoKmL!, 0) / comConsumo.length);
       }
-      if (ultimaMan) setAlertaManutencao(manutencaoVencida(ultimaMan, r.kmSaida));
+      if (ultimaMan) {
+        setUltimaManutencao(ultimaMan);
+        setAlertaManutencao(manutencaoVencida(ultimaMan, r.kmSaida));
+      }
     }
   }
 
@@ -235,11 +239,28 @@ export default function RotaPage() {
               <Flag size={20} color="#16a34a" />
               <Text style={{ fontWeight: "700", color: "#15803d", fontSize: 15 }}>Todas as cidades concluídas!</Text>
             </View>
+            {alertaManutencao && (
+              <View style={{ backgroundColor: "#fef3c7", borderWidth: 1, borderColor: "#fcd34d", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ fontSize: 14 }}>🔧</Text>
+                <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: "#92400e" }}>Troca de óleo vencida! Verifique a manutenção.</Text>
+              </View>
+            )}
             {mostraFinalizacao ? (
               <>
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <View style={{ flex: 1 }}>
-                    <Input label="KM chegada *" keyboardType="numeric" value={kmChegada} onChangeText={(v) => { setKmChegada(v); setErroKm(""); }} placeholder={`Saída: ${rota.kmSaida}`} erro={erroKm} />
+                    <Input
+                      label="KM chegada *"
+                      keyboardType="numeric"
+                      value={kmChegada}
+                      onChangeText={(v) => {
+                        setKmChegada(v);
+                        setErroKm("");
+                        if (ultimaManutencao && v) setAlertaManutencao(manutencaoVencida(ultimaManutencao, Number(v)));
+                      }}
+                      placeholder={`Saída: ${rota.kmSaida}`}
+                      erro={erroKm}
+                    />
                   </View>
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={{ fontSize: 14, fontWeight: "500", color: "#374151" }}>Hora chegada</Text>

@@ -341,9 +341,9 @@ export default function Dashboard() {
 
       {/* Rodapé */}
       <View style={{ alignItems: "center", paddingVertical: 20, gap: 2 }}>
-        <Text style={{ fontSize: 12, fontWeight: "600", color: "#9ca3af", letterSpacing: 0.5 }}>RouteLog</Text>
-        <Text style={{ fontSize: 11, color: "#d1d5db" }}>Desenvolvido por Josevan Oliveira</Text>
-        <Text style={{ fontSize: 10, color: "#e5e7eb", marginTop: 2, letterSpacing: 0.5 }}>v b9301a9</Text>
+        <Text style={{ fontSize: 12, fontWeight: "700", color: "#6b7280", letterSpacing: 0.5 }}>RouteLog</Text>
+        <Text style={{ fontSize: 11, color: "#6b7280" }}>Desenvolvido por Josevan Oliveira</Text>
+        <Text style={{ fontSize: 10, color: "#9ca3af", marginTop: 2, letterSpacing: 0.5 }}>v b9301a9</Text>
       </View>
     </ScrollView>
   );

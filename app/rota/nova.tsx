@@ -7,7 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import Btn from "@/components/Btn";
 import Input from "@/components/Input";
 import SelectModal from "@/components/SelectModal";
-import { listarVeiculos, listarCidades, listarEntregadores, listarRotasModelo, salvarRota, horaAtual, dataHojeISO, Veiculo, Cidade, Entregador, ItemRota, Rota, RotaModelo } from "@/lib/db";
+import { listarVeiculos, listarCidades, listarEntregadores, listarRotasModelo, salvarRota, horaAtual, dataHojeISO, buscarUltimaManutencao, manutencaoVencida, Veiculo, Cidade, Entregador, ItemRota, Rota, RotaModelo } from "@/lib/db";
 import { mensagemSaidaRota, abrirWhatsApp } from "@/lib/whatsapp";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -31,6 +31,7 @@ export default function NovaRotaPage() {
   const [salvando, setSalvando] = useState(false);
   const [temRascunho, setTemRascunho] = useState(false);
   const [mostrarModelos, setMostrarModelos] = useState(false);
+  const [alertaTrocaOleo, setAlertaTrocaOleo] = useState(false);
   const carregadoRef = useRef(false);
 
   useEffect(() => {
@@ -78,10 +79,18 @@ export default function NovaRotaPage() {
     setMostrarModelos(false);
   }
 
+  async function verificarTrocaOleo(vid: string, km: string) {
+    const kmNum = Number(km);
+    if (!vid || !kmNum) { setAlertaTrocaOleo(false); return; }
+    const ultima = await buscarUltimaManutencao(Number(vid));
+    setAlertaTrocaOleo(!!ultima && manutencaoVencida(ultima, kmNum));
+  }
+
   function selecionarVeiculo(id: string) {
     setVeiculoId(id);
     const v = veiculos.find((v) => String(v.id) === id);
     if (v?.motoristaPadrao) setMotorista(v.motoristaPadrao);
+    verificarTrocaOleo(id, kmSaida);
   }
 
   function adicionarItem() { setItens([...itens, { ...ITEM_VAZIO }]); }
@@ -124,7 +133,7 @@ export default function NovaRotaPage() {
       const rota: Rota = { data: dataHojeISO(), veiculoId: Number(veiculoId), veiculoPlaca: veiculo.placa, motorista, kmSaida: Number(kmSaida), horaSaida, status: "em_andamento", itens: itensRota, criadoEm: new Date().toISOString() };
       const id = await salvarRota(rota);
       await AsyncStorage.removeItem(RASCUNHO_KEY);
-      if (enviarWhatsApp) await abrirWhatsApp(mensagemSaidaRota({ ...rota, id }));
+      if (enviarWhatsApp) await abrirWhatsApp(mensagemSaidaRota({ ...rota, id }, alertaTrocaOleo));
       router.push(`/rota/${id}` as any);
     } finally { setSalvando(false); }
   }
@@ -178,9 +187,15 @@ export default function NovaRotaPage() {
           <Text style={{ fontWeight: "600", color: "#374151" }}>Veículo</Text>
           <SelectModal label="Veículo *" value={veiculoId} options={veiculoOptions} onChange={selecionarVeiculo} placeholder="Selecione o veículo" erro={erros.veiculo} />
           <Input label="Motorista *" value={motorista} onChangeText={setMotorista} placeholder="Nome do motorista" erro={erros.motorista} />
+          {alertaTrocaOleo && (
+            <View style={{ backgroundColor: "#fef3c7", borderWidth: 1, borderColor: "#fcd34d", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 14 }}>🔧</Text>
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: "600", color: "#92400e" }}>Troca de óleo vencida! Verifique a manutenção antes de sair.</Text>
+            </View>
+          )}
           <View style={{ flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
-              <Input label="KM saída *" keyboardType="numeric" value={kmSaida} onChangeText={setKmSaida} placeholder="Ex: 45230" erro={erros.km} />
+              <Input label="KM saída *" keyboardType="numeric" value={kmSaida} onChangeText={(v) => { setKmSaida(v); verificarTrocaOleo(veiculoId, v); }} placeholder="Ex: 45230" erro={erros.km} />
             </View>
             <View style={{ flex: 1 }}>
               <Input label="Hora saída" value={horaSaida} onChangeText={setHoraSaida} placeholder="HH:MM" keyboardType="numbers-and-punctuation" />

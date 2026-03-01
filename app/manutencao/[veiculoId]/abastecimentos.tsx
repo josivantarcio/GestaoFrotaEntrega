@@ -64,17 +64,24 @@ export default function AbastecimentosPage() {
     setMostraForm(true);
   }
 
+  function parseDecimal(v: string): number {
+    return Number(v.replace(",", "."));
+  }
+
   async function salvar() {
     const novosErros: Record<string, string> = {};
-    if (!form.kmAtual || isNaN(Number(form.kmAtual))) novosErros.kmAtual = "Informe o KM atual";
-    if (!form.litros || isNaN(Number(form.litros))) novosErros.litros = "Informe os litros";
-    if (!form.valorTotal || isNaN(Number(form.valorTotal))) novosErros.valorTotal = "Informe o valor";
+    const kmAtualNum = parseDecimal(form.kmAtual);
+    const litrosNum = parseDecimal(form.litros);
+    const valorTotalNum = parseDecimal(form.valorTotal);
+    if (!form.kmAtual || isNaN(kmAtualNum)) novosErros.kmAtual = "Informe o KM atual";
+    if (!form.litros || isNaN(litrosNum)) novosErros.litros = "Informe os litros";
+    if (!form.valorTotal || isNaN(valorTotalNum)) novosErros.valorTotal = "Informe o valor";
     const dataISO = parseDateBR(form.data);
     if (!form.data || !dataISO) novosErros.data = "Data inválida. Use DD/MM/AAAA";
 
     if (lista.length > 0) {
       const maiorKm = lista[0].kmAtual;
-      if (Number(form.kmAtual) <= maiorKm) {
+      if (kmAtualNum <= maiorKm) {
         novosErros.kmAtual = `KM deve ser maior que o último (${maiorKm})`;
       }
     }
@@ -87,9 +94,9 @@ export default function AbastecimentosPage() {
         veiculoId: vidNum,
         veiculoPlaca: veiculo?.placa ?? "",
         data: dataISO!,
-        kmAtual: Number(form.kmAtual),
-        litros: Number(form.litros),
-        valorTotal: Number(form.valorTotal),
+        kmAtual: kmAtualNum,
+        litros: litrosNum,
+        valorTotal: valorTotalNum,
         tipoCombustivel: form.tipoCombustivel,
         posto: form.posto || undefined,
         observacao: form.observacao || undefined,
